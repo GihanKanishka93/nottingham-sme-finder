@@ -1,0 +1,130 @@
+:root {
+  --bg: #0b1220;
+  --card: #111a2b;
+  --muted: #8aa0b8;
+  --text: #e6eef8;
+  --accent: #4da3ff;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --gap: 16px;
+  --bp-md: 900px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: linear-gradient(180deg, #0b1220, #0b1220 40%, #0e1a2d);
+  color: var(--text);
+}
+
+.shell {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 0 16px;
+}
+
+.card {
+  background: radial-gradient(1200px 400px at -10% -20%, rgba(77,163,255,.2), transparent 40%), var(--card);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.3);
+}
+
+h1 {
+  font-size: 28px;
+  margin: 0 0 8px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap);
+}
+
+@media (min-width: var(--bp-md)) {
+  .grid {
+    grid-template-columns: 260px 1fr;
+  }
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,.12);
+  background: #0b1322;
+  color: var(--text);
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,.14);
+  background: #0d1627;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-weight: 600;
+}
+
+button:hover {
+  background: #112036;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding: 10px 8px;
+  vertical-align: top;
+  text-align: left;
+}
+
+th {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.row {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-md);
+  padding: 10px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.pill {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 8px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  color: var(--muted);
+}
