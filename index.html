@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nottingham SME Finder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      :root { --bg: #0b1220; --card: #111a2b; --muted: #8aa0b8; --text: #e6eef8; --accent: #4da3ff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: linear-gradient(180deg, #0b1220, #0b1220 40%, #0e1a2d); color: var(--text); }
+      .shell { max-width: 1100px; margin: 40px auto; padding: 0 16px; }
+      .card { background: radial-gradient(1200px 400px at -10% -20%, rgba(77,163,255,.2), transparent 40%), var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+      h1 { font-size: 28px; margin: 0 0 8px; }
+      .muted { color: var(--muted); }
+      .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+      @media (min-width: 900px){ .grid { grid-template-columns: 260px 1fr; } }
+      label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+      input, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: #0b1322; color: var(--text); }
+      button { cursor: pointer; border: 1px solid rgba(255,255,255,.14); background: #0d1627; color: var(--text); border-radius: 10px; padding: 10px 14px; font-weight: 600; }
+      button:hover { background: #112036; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border-bottom: 1px solid rgba(255,255,255,.08); padding: 10px 8px; vertical-align: top; text-align: left; }
+      th { font-size: 12px; color: var(--muted); }
+      .row { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; padding: 10px; }
+      .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+      .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="card">
+        <h1>Nottingham SME Finder</h1>
+        <p class="muted">Lists active companies in Nottingham from Companies House. Filter by SIC, company type, and incorporation dates. Export to CSV.</p>
+        <div class="grid" style="margin-top:16px;">
+          <aside>
+            <div class="toolbar">
+              <div style="flex:1 1 100%">
+                <label>Location</label>
+                <input id="location" value="Nottingham" />
+              </div>
+              <div>
+                <label>Status</label>
+                <select id="status">
+                  <option value="active" selected>active</option>
+                  <option value="dissolved">dissolved</option>
+                </select>
+              </div>
+              <div style="flex:1 0 100%">
+                <label>SIC codes (comma separated)</label>
+                <input id="sic" placeholder="eg 62012,73110" />
+              </div>
+              <div style="flex:1 0 100%">
+                <label>Company types (comma separated)</label>
+                <input id="types" placeholder="eg ltd,private-limited-guarant-nsc" />
+              </div>
+              <div>
+                <label>Incorporated from (YYYY-MM-DD)</label>
+                <input id="from" placeholder="2020-01-01" />
+              </div>
+              <div>
+                <label>Incorporated to (YYYY-MM-DD)</label>
+                <input id="to" placeholder="2025-12-31" />
+              </div>
+              <div>
+                <label>Results per page</label>
+                <input id="size" type="number" min="1" max="5000" value="100" />
+              </div>
+              <div>
+                <label>Start index</label>
+                <input id="start" type="number" min="0" value="0" />
+              </div>
+              <div>
+                <button id="search">Search</button>
+                <button id="export">Export CSV</button>
+              </div>
+            </div>
+          </aside>
+          <main>
+            <div id="summary" class="muted" style="margin-bottom:12px"></div>
+            <div class="row">
+              <table id="results">
+                <thead>
+                  <tr>
+                    <th>Company name</th>
+                    <th>Number</th>
+                    <th>Status</th>
+                    <th>Incorporated</th>
+                    <th>Address</th>
+                    <th>SIC</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const qs = id => document.getElementById(id);
+      const tbody = document.querySelector('#results tbody');
+      const summary = qs('summary');
+
+      function fmt(v){ return v || ''; }
+      function csvEscape(v){
+        const s = String(v ?? '');
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+          return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+      }
+
+      function render(rows){
+        tbody.innerHTML = '';
+        rows.forEach(it => {
+          const tr = document.createElement('tr');
+          const addr = it.registered_office_address || {};
+          const address = [addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country].filter(Boolean).join(', ');
+          tr.innerHTML = `
+            <td><a href="https://find-and-update.company-information.service.gov.uk/company/${fmt(it.company_number)}" target="_blank" rel="noopener">${fmt(it.company_name)}</a></td>
+            <td>${fmt(it.company_number)}</td>
+            <td>${fmt(it.company_status)}</td>
+            <td>${fmt(it.date_of_creation)}</td>
+            <td>${address}</td>
+            <td>${(it.sic_codes || []).join(', ')}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      async function run(){
+        const params = new URLSearchParams({
+          location: qs('location').value.trim(),
+          status: qs('status').value,
+          sic: qs('sic').value.trim(),
+          types: qs('types').value.trim(),
+          incorporated_from: qs('from').value.trim(),
+          incorporated_to: qs('to').value.trim(),
+          size: qs('size').value,
+          start_index: qs('start').value
+        });
+        summary.textContent = 'Loading…';
+        const res = await fetch('/api/companies?' + params.toString());
+        if (!res.ok){
+          const t = await res.text();
+          summary.textContent = 'Error: ' + t;
+          render([]);
+          return;
+        }
+        const data = await res.json();
+        const rows = data.items || [];
+        summary.textContent = `${rows.length} results. Top hit is included separately in API, results show page slice. Total hits (if provided): ${data.hits ?? 'n/a'}`;
+        render(rows);
+        window.__lastRows = rows;
+      }
+
+      function exportCSV(){
+        const rows = window.__lastRows || [];
+        const headers = ['company_name','company_number','company_status','date_of_creation','address','sic_codes'];
+        const lines = [headers.join(',')];
+        rows.forEach(it => {
+          const addr = it.registered_office_address || {};
+          const address = [addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country].filter(Boolean).join(', ');
+          lines.push([
+            csvEscape(it.company_name),
+            csvEscape(it.company_number),
+            csvEscape(it.company_status),
+            csvEscape(it.date_of_creation),
+            csvEscape(address),
+            csvEscape((it.sic_codes || []).join(' '))
+          ].join(','));
+        });
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'nottingham_companies.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      qs('search').addEventListener('click', run);
+      qs('export').addEventListener('click', exportCSV);
+      run();
+    </script>
+  </body>
+</html>
