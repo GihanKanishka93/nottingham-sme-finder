@@ -14,6 +14,7 @@
       <div class="card">
         <h1>Nottingham SME Finder</h1>
         <p class="muted">Lists active companies in Nottingham from Companies House. Filter by SIC, company type, and incorporation dates. Export to CSV.</p>
+        <div id="alert" class="alert" role="alert" style="display:none"></div>
         <div class="grid" style="margin-top:16px;">
           <aside>
             <div class="toolbar">
@@ -87,11 +88,14 @@
         </div>
       </div>
     </div>
+    <div id="spinner" class="spinner-overlay" style="display:none"><div class="spinner"></div></div>
 
     <script>
       const qs = id => document.getElementById(id);
       const tbody = document.querySelector('#results tbody');
       const summary = qs('summary');
+      const spinner = qs('spinner');
+      const alertBox = qs('alert');
       const tableHeaders = document.querySelectorAll('#results thead th[data-key]');
       const filterInputs = document.querySelectorAll('#results thead tr.filters input');
 
@@ -167,21 +171,38 @@
           size: qs('size').value,
           start_index: startIndex
         });
+        alertBox.style.display = 'none';
+        spinner.style.display = 'flex';
         summary.textContent = 'Loading…';
-        const res = await fetch('/api/companies?' + params.toString());
-        if (!res.ok){
-          const t = await res.text();
-          summary.textContent = 'Error: ' + t;
+        try {
+          const res = await fetch('/api/companies?' + params.toString());
+          if (!res.ok){
+            const t = await res.text();
+            console.error('Request failed', res.status, t);
+            alertBox.textContent = 'Unable to load data. Please try again later.';
+            alertBox.style.display = 'block';
+            summary.textContent = '';
+            window.__lastRows = [];
+            render();
+            updateNavButtons();
+            return;
+          }
+          const data = await res.json();
+          window.__lastRows = data.items || [];
+          summary.textContent = `${window.__lastRows.length} results. Top hit is included separately in API, results show page slice. Total hits (if provided): ${data.hits ?? 'n/a'}`;
+          render();
+          updateNavButtons();
+        } catch (err) {
+          console.error('Fetch error', err);
+          alertBox.textContent = 'Unexpected error. Please try again later.';
+          alertBox.style.display = 'block';
+          summary.textContent = '';
           window.__lastRows = [];
           render();
           updateNavButtons();
-          return;
+        } finally {
+          spinner.style.display = 'none';
         }
-        const data = await res.json();
-        window.__lastRows = data.items || [];
-        summary.textContent = `${window.__lastRows.length} results. Top hit is included separately in API, results show page slice. Total hits (if provided): ${data.hits ?? 'n/a'}`;
-        render();
-        updateNavButtons();
       }
 
       function exportCSV(){

@@ -120,11 +120,47 @@ th {
   align-items: end;
 }
 
-.pill {
-  display: inline-block;
-  font-size: 12px;
-  padding: 2px 8px;
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 999px;
-  color: var(--muted);
-}
+  .pill {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 8px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 999px;
+    color: var(--muted);
+  }
+
+.alert {
+    display: none;
+    background: #2b1010;
+    border: 1px solid #ff4d4f;
+    color: #ffbaba;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+  }
+
+.spinner-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255,255,255,.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+  }
