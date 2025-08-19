@@ -49,8 +49,8 @@
                 <input id="size" type="number" min="1" max="5000" value="100" />
               </div>
               <div>
-                <label>Start index</label>
-                <input id="start" type="number" min="0" value="0" />
+                <button id="prev">Previous</button>
+                <button id="next">Next</button>
               </div>
               <div>
                 <button id="search">Search</button>
@@ -97,6 +97,7 @@
 
       const filters = {};
       let sortState = { key: null, asc: true };
+      let startIndex = 0;
 
       function fmt(v){ return v || ''; }
       function csvEscape(v){
@@ -164,7 +165,7 @@
           incorporated_from: qs('from').value.trim(),
           incorporated_to: qs('to').value.trim(),
           size: qs('size').value,
-          start_index: qs('start').value
+          start_index: startIndex
         });
         summary.textContent = 'Loading…';
         const res = await fetch('/api/companies?' + params.toString());
@@ -173,12 +174,14 @@
           summary.textContent = 'Error: ' + t;
           window.__lastRows = [];
           render();
+          updateNavButtons();
           return;
         }
         const data = await res.json();
         window.__lastRows = data.items || [];
         summary.textContent = `${window.__lastRows.length} results. Top hit is included separately in API, results show page slice. Total hits (if provided): ${data.hits ?? 'n/a'}`;
         render();
+        updateNavButtons();
       }
 
       function exportCSV(){
@@ -226,8 +229,28 @@
         });
       });
 
-      qs('search').addEventListener('click', run);
+      function updateNavButtons(){
+        const size = Number(qs('size').value);
+        qs('prev').disabled = startIndex === 0;
+        qs('next').disabled = (window.__lastRows || []).length < size;
+      }
+
+      qs('search').addEventListener('click', () => {
+        startIndex = 0;
+        run();
+      });
+      qs('prev').addEventListener('click', () => {
+        const size = Number(qs('size').value);
+        startIndex = Math.max(0, startIndex - size);
+        run();
+      });
+      qs('next').addEventListener('click', () => {
+        const size = Number(qs('size').value);
+        startIndex += size;
+        run();
+      });
       qs('export').addEventListener('click', exportCSV);
+      updateNavButtons();
       run();
     </script>
   </body>
