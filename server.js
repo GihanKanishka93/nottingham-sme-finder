@@ -20,14 +20,14 @@ if (!API_KEY) {
 }
 
 // ✅ Correctly resolve to the project’s /public folder
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const PUBLIC_DIR = path.resolve(__dirname, 'public');
 
 // Serve static frontend files
 app.use(express.static(PUBLIC_DIR));
 
 // Root route → serve index.html
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
 // Helper: clamp numbers
