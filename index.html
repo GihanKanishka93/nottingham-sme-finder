@@ -64,12 +64,20 @@
               <table id="results">
                 <thead>
                   <tr>
-                    <th>Company name</th>
-                    <th>Number</th>
-                    <th>Status</th>
-                    <th>Incorporated</th>
-                    <th>Address</th>
-                    <th>SIC</th>
+                    <th data-key="company_name">Company name</th>
+                    <th data-key="company_number">Number</th>
+                    <th data-key="company_status">Status</th>
+                    <th data-key="date_of_creation">Incorporated</th>
+                    <th data-key="address">Address</th>
+                    <th data-key="sic_codes">SIC</th>
+                  </tr>
+                  <tr class="filters">
+                    <th><input data-key="company_name" /></th>
+                    <th><input data-key="company_number" /></th>
+                    <th><input data-key="company_status" /></th>
+                    <th><input data-key="date_of_creation" /></th>
+                    <th><input data-key="address" /></th>
+                    <th><input data-key="sic_codes" /></th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -84,6 +92,11 @@
       const qs = id => document.getElementById(id);
       const tbody = document.querySelector('#results tbody');
       const summary = qs('summary');
+      const tableHeaders = document.querySelectorAll('#results thead th[data-key]');
+      const filterInputs = document.querySelectorAll('#results thead tr.filters input');
+
+      const filters = {};
+      let sortState = { key: null, asc: true };
 
       function fmt(v){ return v || ''; }
       function csvEscape(v){
@@ -94,19 +107,49 @@
         return s;
       }
 
-      function render(rows){
+      const accessors = {
+        company_name: it => fmt(it.company_name),
+        company_number: it => fmt(it.company_number),
+        company_status: it => fmt(it.company_status),
+        date_of_creation: it => fmt(it.date_of_creation),
+        address: it => {
+          const addr = it.registered_office_address || {};
+          return [addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country].filter(Boolean).join(', ');
+        },
+        sic_codes: it => (it.sic_codes || []).join(', ')
+      };
+
+      function render(){
+        const baseRows = window.__lastRows || [];
+        let rows = baseRows.filter(it => {
+          return Object.entries(filters).every(([key, val]) => {
+            if (!val) return true;
+            return accessors[key](it).toLowerCase().includes(val);
+          });
+        });
+
+        if (sortState.key){
+          const dir = sortState.asc ? 1 : -1;
+          rows = rows.slice().sort((a, b) => {
+            const va = accessors[sortState.key](a).toLowerCase();
+            const vb = accessors[sortState.key](b).toLowerCase();
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+            return 0;
+          });
+        }
+
         tbody.innerHTML = '';
         rows.forEach(it => {
           const tr = document.createElement('tr');
-          const addr = it.registered_office_address || {};
-          const address = [addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country].filter(Boolean).join(', ');
+          const address = accessors.address(it);
           tr.innerHTML = `
             <td><a href="https://find-and-update.company-information.service.gov.uk/company/${fmt(it.company_number)}" target="_blank" rel="noopener">${fmt(it.company_name)}</a></td>
             <td>${fmt(it.company_number)}</td>
             <td>${fmt(it.company_status)}</td>
             <td>${fmt(it.date_of_creation)}</td>
             <td>${address}</td>
-            <td>${(it.sic_codes || []).join(', ')}</td>
+            <td>${accessors.sic_codes(it)}</td>
           `;
           tbody.appendChild(tr);
         });
@@ -128,14 +171,14 @@
         if (!res.ok){
           const t = await res.text();
           summary.textContent = 'Error: ' + t;
-          render([]);
+          window.__lastRows = [];
+          render();
           return;
         }
         const data = await res.json();
-        const rows = data.items || [];
-        summary.textContent = `${rows.length} results. Top hit is included separately in API, results show page slice. Total hits (if provided): ${data.hits ?? 'n/a'}`;
-        render(rows);
-        window.__lastRows = rows;
+        window.__lastRows = data.items || [];
+        summary.textContent = `${window.__lastRows.length} results. Top hit is included separately in API, results show page slice. Total hits (if provided): ${data.hits ?? 'n/a'}`;
+        render();
       }
 
       function exportCSV(){
@@ -162,6 +205,26 @@
         a.click();
         URL.revokeObjectURL(url);
       }
+
+      tableHeaders.forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.key;
+          if (sortState.key === key){
+            sortState.asc = !sortState.asc;
+          } else {
+            sortState.key = key;
+            sortState.asc = true;
+          }
+          render();
+        });
+      });
+
+      filterInputs.forEach(inp => {
+        inp.addEventListener('input', () => {
+          filters[inp.dataset.key] = inp.value.trim().toLowerCase();
+          render();
+        });
+      });
 
       qs('search').addEventListener('click', run);
       qs('export').addEventListener('click', exportCSV);
